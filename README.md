@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/claude-carry-icon.png" alt="Claude Carry icon: a backpack carrying project context" width="160" />
+  <img src="assets/claude-carry-social-preview.png" alt="Claude Carry icon: a backpack carrying project context" width="100%" style="border-radius: 5px;"/>
 </p>
 
 # Claude Carry - Carry Context, Save Tokens
