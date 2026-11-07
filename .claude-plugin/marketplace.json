@@ -1,0 +1,11 @@
+{
+  "name": "claude-carry-marketplace",
+  "owner": { "name": "Gabriel Freitas" },
+  "plugins": [
+    {
+      "name": "claude-carry",
+      "source": "./",
+      "description": "Save tokens with automatic project handoffs and smart checkpoints that preserve context across sessions."
+    }
+  ]
+}
