@@ -1,6 +1,6 @@
-# Claude Carry
+# Claude Carry - Carry Context, Save Tokens
 
-**Carry project context into fresh sessions — with less repeated explanation.**
+**Start fresh sessions with your project's goals, decisions, and next steps, so you spend less time and fewer tokens rebuilding context.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
@@ -35,12 +35,12 @@ The code uses cross-platform Node.js APIs and passes hook arguments without a sh
 
 **Claude Carry can save tokens when a concise handoff replaces repeated explanations and unnecessary rediscovery in fresh sessions.** Its advantage over relying on `/compact` alone is a persistent, inspectable project handoff that can be loaded across session boundaries. It has not been benchmarked as cheaper than `/compact`.
 
-| Need | Claude Carry | `/compact` |
-| --- | --- | --- |
-| Continue in a new session | Loads a saved `HANDOFF.md` from the project. | Summarizes the current conversation for continued use in that session. |
-| Preserve explicit project state | Keeps an editable record of decisions, verified results, blockers, and next steps. | Retains selected conversation details in a generated summary. |
-| Reduce the active conversation | Does not clear or shrink it automatically. | Compresses conversation history to free context space. |
-| Token overhead | Summary generation, checkpoint tool calls, and loading the handoff use tokens. | Processing the conversation and generating the summary use tokens. |
+| Need                            | Claude Carry                                                                       | `/compact`                                                             |
+| ------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Continue in a new session       | Loads a saved `HANDOFF.md` from the project.                                       | Summarizes the current conversation for continued use in that session. |
+| Preserve explicit project state | Keeps an editable record of decisions, verified results, blockers, and next steps. | Retains selected conversation details in a generated summary.          |
+| Reduce the active conversation  | Does not clear or shrink it automatically.                                         | Compresses conversation history to free context space.                 |
+| Token overhead                  | Summary generation, checkpoint tool calls, and loading the handoff use tokens.     | Processing the conversation and generating the summary use tokens.     |
 
 For a focused restart at a natural milestone:
 
@@ -99,27 +99,56 @@ For a persistent local installation, run inside Claude Code:
 
 See the [official installation guide](https://code.claude.com/docs/en/discover-plugins) for installation scopes and marketplace management.
 
+## Updating an existing installation
+
+Version **0.1.1** improves handoff reconciliation and pruning. For a GitHub marketplace
+installation, first publish the updated files and version to the repository. Then
+run these commands in your terminal:
+
+```sh
+claude plugin marketplace update claude-carry-marketplace
+claude plugin update claude-carry@claude-carry-marketplace
+claude plugin list
+```
+
+For an installation explicitly scoped to a project, run the update from that project
+and add `--scope project`; use `--scope local` for a local-scope installation. Inspect
+the installed plugin in `/plugin` if you are unsure which scope you used.
+
+Restart Claude Code after the update, or run `/reload-plugins` inside the session.
+Confirm version `0.1.1` in the plugin listing. Your project's `HANDOFF.md`, mode
+configuration and `.claude-carry/` state do not need to be deleted or recreated.
+Run `/claude-carry:save` once to reconcile an existing handoff using the new guidance.
+
+If you use `--plugin-dir` or a marketplace registered from a local path, update that
+source folder and restart the session. A separate downloaded copy needs the new
+files too; editing this repository does not change that copy. Avoid editing the
+managed cache under `~/.claude/plugins/`.
+
+See the official [update instructions](https://code.claude.com/docs/en/discover-plugins#update-plugins-now)
+and [local loading rules](https://code.claude.com/docs/en/plugins/loading#in-place-and-copied-plugins).
+
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `/claude-carry:init` | Prepare project continuity and ignore local runtime files. |
-| `/claude-carry:save` | Save the objective, progress, decisions, verified tests, blockers, and next steps. |
-| `/claude-carry:resume` | Verify saved context against the repository and continue authorized pending work. |
+| Command                | Purpose                                                                            |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| `/claude-carry:init`   | Prepare project continuity and ignore local runtime files.                         |
+| `/claude-carry:save`   | Save the objective, progress, decisions, verified tests, blockers, and next steps. |
+| `/claude-carry:resume` | Verify saved context against the repository and continue authorized pending work.  |
 
 `init` is optional: the first checkpoint can create `HANDOFF.md`. If you skip it, add `.claude-carry/` to `.gitignore` yourself. Claude Carry does not modify `CLAUDE.md`, commit, or push on your behalf.
 
 ## How it works
 
-| Event | Behavior |
-| --- | --- |
-| `SessionStart` | Loads up to 18,000 handoff characters, identifies the branch, and lists the five most recently modified recovery records. |
-| `UserPromptSubmit` | Allows a new checkpoint reminder for the new turn. |
-| `PostToolUse` | Tracks in-project edits and common test commands; acknowledges this session's handoff writes. |
-| `PostToolUseFailure` | Marks a tool failure as a possible reason to save context. |
-| `Stop` | Checks for pending changes and requests a checkpoint, with repeated-state and continuation-loop guards. |
-| `PreCompact` | Saves a fresh technical snapshot of pending work and supplies guidance for the compaction summary. |
-| `SessionEnd` | Saves pending signals with the last observed snapshot, avoiding a full Git scan during shutdown. |
+| Event                | Behavior                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `SessionStart`       | Loads up to 18,000 handoff characters, identifies the branch, and lists the five most recently modified recovery records. |
+| `UserPromptSubmit`   | Allows a new checkpoint reminder for the new turn.                                                                        |
+| `PostToolUse`        | Tracks in-project edits and common test commands; acknowledges this session's handoff writes.                             |
+| `PostToolUseFailure` | Marks a tool failure as a possible reason to save context.                                                                |
+| `Stop`               | Checks for pending changes and requests a checkpoint, with repeated-state and continuation-loop guards.                   |
+| `PreCompact`         | Saves a fresh technical snapshot of pending work and supplies guidance for the compaction summary.                        |
+| `SessionEnd`         | Saves pending signals with the last observed snapshot, avoiding a full Git scan during shutdown.                          |
 
 The Git detector compares the commit, branch, staged changes, and contents of modified or untracked, non-ignored files. Contents are hashed in chunks, including large files. Existing changes at session startup become the baseline. `HANDOFF.md` and `.claude-carry/` are excluded from file comparisons.
 
@@ -130,6 +159,26 @@ The save skill uses `Write` or `Edit` with an absolute path. Shell-based or exte
 Ordinary questions without pending work do not trigger smart checkpoints. Discoveries and decisions without file changes rely on Claude following the save skill's guidance; Git cannot infer their meaning.
 
 ## Project files
+
+### Keeping the handoff concise
+
+The save skill reconciles the whole document: it removes resolved tasks, merges
+duplicates, replaces superseded decisions, and retains unresolved work and current
+constraints. Old test results are marked historical when later changes invalidate
+them. Initialization and resumption use the same save guidance.
+
+For substantial projects, the writing target is 3,000–6,000 characters, normally no
+more than 8,000 characters and 150 lines; small tasks should use less. Claude is
+instructed to verify size and condense the file before finishing. Essential facts
+take priority over the target, and exceptional overruns should be reported. This is
+model guidance, not a script-enforced size limit or an automatic deletion policy.
+
+Critical state appears first. There is no append-only session diary or overflow
+archive. With no durable change or useful cleanup, the skill leaves the handoff
+untouched instead of making a timestamp-only edit. Runtime state files still have
+no automatic age-based cleanup.
+
+### Files on disk
 
 **Yes: the plugin creates a `.claude-carry/` directory in each project it runs in.** It uses the Git worktree root, or the session project directory when Git is unavailable. The hook creates the directory even before `init` and in manual mode.
 
@@ -143,11 +192,11 @@ your-project/
 └── .gitignore
 ```
 
-| File | Contents | Version control |
-| --- | --- | --- |
-| `HANDOFF.md` | Objective, branch, progress, decisions, tests, blockers, next steps | Your choice; review before sharing. |
-| `.claude-carry.json` | Optional mode selection | Can be shared with your team. |
-| `.claude-carry/` | Session state, hashes, timestamps, branches, commit IDs, changed filenames | Keep local and ignored. |
+| File                 | Contents                                                                   | Version control                     |
+| -------------------- | -------------------------------------------------------------------------- | ----------------------------------- |
+| `HANDOFF.md`         | Objective, branch, progress, decisions, tests, blockers, next steps        | Your choice; review before sharing. |
+| `.claude-carry.json` | Optional mode selection                                                    | Can be shared with your team.       |
+| `.claude-carry/`     | Session state, hashes, timestamps, branches, commit IDs, changed filenames | Keep local and ignored.             |
 
 Add this entry to the project's `.gitignore`:
 
@@ -171,11 +220,11 @@ No configuration is needed for smart mode. To choose explicitly, create `.claude
 }
 ```
 
-| Mode | Behavior |
-| --- | --- |
-| `smart` | Default. Requests checkpoints for detected work and encourages saving meaningful decisions. |
-| `manual` | Loads context; no automatic checkpoint requests or recovery writes. Use `save` explicitly. |
-| `aggressive` | Also requests a checkpoint check on otherwise idle turns. May use more session tokens. |
+| Mode         | Behavior                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| `smart`      | Default. Requests checkpoints for detected work and encourages saving meaningful decisions. |
+| `manual`     | Loads context; no automatic checkpoint requests or recovery writes. Use `save` explicitly.  |
+| `aggressive` | Also requests a checkpoint check on otherwise idle turns. May use more session tokens.      |
 
 Requests are suppressed for repeated state within a turn, and `stop_hook_active` prevents recursive continuation. A new prompt permits a fresh reminder for work that still needs a checkpoint. Invalid configuration produces a diagnostic and lets the session continue.
 
@@ -190,13 +239,13 @@ Requests are suppressed for repeated state within a turn, and `stop_hook_active`
 
 ## Troubleshooting
 
-| Symptom | What to check |
-| --- | --- |
-| Commands do not appear | Confirm the plugin is installed/enabled and restart Claude Code. |
-| Hooks do not run | Inspect `/hooks`; check that `node` and, optionally, `git` are on `PATH`. |
-| A save is requested again | Use the save skill's `Write`/`Edit` workflow; inspect changes made after the checkpoint. |
-| No checkpoint after an external edit | Check Git availability and ignore rules. Without Git, only tool signals are tracked. |
-| `checkpoint hook unavailable` | Check project permissions, JSON configuration, runtime state, and Node/Git availability. Diagnostics deliberately omit input and tool output. |
+| Symptom                              | What to check                                                                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Commands do not appear               | Confirm the plugin is installed/enabled and restart Claude Code.                                                                              |
+| Hooks do not run                     | Inspect `/hooks`; check that `node` and, optionally, `git` are on `PATH`.                                                                     |
+| A save is requested again            | Use the save skill's `Write`/`Edit` workflow; inspect changes made after the checkpoint.                                                      |
+| No checkpoint after an external edit | Check Git availability and ignore rules. Without Git, only tool signals are tracked.                                                          |
+| `checkpoint hook unavailable`        | Check project permissions, JSON configuration, runtime state, and Node/Git availability. Diagnostics deliberately omit input and tool output. |
 
 ## Development and validation
 

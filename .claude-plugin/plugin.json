@@ -1,6 +1,6 @@
 {
   "name": "claude-carry",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Save tokens with persistent project context, HANDOFF.md, and smart checkpoints.",
   "homepage": "https://github.com/oGabrielFreitas/claude-carry#readme",
   "repository": "https://github.com/oGabrielFreitas/claude-carry",
