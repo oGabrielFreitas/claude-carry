@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/claude-carry-icon.png" alt="Claude Carry icon: a backpack carrying project context" width="160" />
+</p>
+
 # Claude Carry - Carry Context, Save Tokens
 
 **Start fresh sessions with your project's goals, decisions, and next steps, so you spend less time and fewer tokens rebuilding context.**
